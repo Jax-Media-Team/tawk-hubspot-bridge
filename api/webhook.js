@@ -87,15 +87,22 @@ export default async function handler(req, res) {
     Array.isArray(messages) ? messages.length : 'not-array'
   );
 
-  // Try to find any visitor-authored message that looks like the form dump.
+  // Find the message that is the pre-chat form dump. It always starts with "Name :".
   let firstMsgText = '';
   if (Array.isArray(messages)) {
     for (const m of messages) {
       const text = m.msg || m.text || m.message || '';
-      if (typeof text === 'string' && text.indexOf(':') >= 0) {
+      if (typeof text === 'string' && /^\s*Name\s*:/m.test(text)) {
         firstMsgText = text;
         break;
       }
+    }
+    // Fallback: concatenate all text and let the parser scan it.
+    if (!firstMsgText) {
+      firstMsgText = messages
+        .map((m) => m.msg || m.text || m.message || '')
+        .filter((s) => typeof s === 'string')
+        .join('\n');
     }
   }
 
