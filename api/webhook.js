@@ -73,34 +73,44 @@ export default async function handler(req, res) {
   const event = payload.event || payload.eventName || payload.type || '';
   console.log('[bridge] event=', event, 'keys=', Object.keys(payload).join(','));
 
-  const visitor = payload.visitor || payload.property?.visitor || {};
-  const messages =
-    (payload.chat && payload.chat.messages) ||
-    payload.messages ||
-    payload.transcript ||
-    [];
+  const chat = payload.chat || {};
+  const visitor = payload.visitor || chat.visitor || payload.property?.visitor || {};
+  const messages = chat.messages || payload.messages || payload.transcript || [];
 
   console.log(
-    '[bridge] visitor keys=',
+    '[bridge] chat keys=',
+    Object.keys(chat).join(','),
+    ' visitor keys=',
     Object.keys(visitor).join(','),
     ' messages count=',
     Array.isArray(messages) ? messages.length : 'not-array'
   );
 
-  // Find the message that is the pre-chat form dump. It always starts with "Name :".
+  // Log the shape of the first 3 messages to figure out structure.
+  if (Array.isArray(messages)) {
+    messages.slice(0, 3).forEach((m, i) => {
+      console.log(
+        `[bridge] msg[${i}] keys=`,
+        Object.keys(m).join(','),
+        ' sample=',
+        JSON.stringify(m).slice(0, 300)
+      );
+    });
+  }
+
+  // Find the form-dump message. Prefer one with "Name :" line.
   let firstMsgText = '';
   if (Array.isArray(messages)) {
     for (const m of messages) {
-      const text = m.msg || m.text || m.message || '';
-      if (typeof text === 'string' && /^\s*Name\s*:/m.test(text)) {
+      const text = m.msg || m.text || m.message || m.body || '';
+      if (typeof text === 'string' && /\bName\s*:/.test(text) && /\bEmail\s*:/.test(text)) {
         firstMsgText = text;
         break;
       }
     }
-    // Fallback: concatenate all text and let the parser scan it.
     if (!firstMsgText) {
       firstMsgText = messages
-        .map((m) => m.msg || m.text || m.message || '')
+        .map((m) => m.msg || m.text || m.message || m.body || '')
         .filter((s) => typeof s === 'string')
         .join('\n');
     }
