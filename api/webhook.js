@@ -70,23 +70,41 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'invalid json' });
   }
 
-  const event = payload.event || payload.eventName;
-  if (event && event !== 'chat:end' && event !== 'chat:transcript_created') {
-    return res.status(200).json({ skipped: true, event });
-  }
+  const event = payload.event || payload.eventName || payload.type || '';
+  console.log('[bridge] event=', event, 'keys=', Object.keys(payload).join(','));
 
-  const visitor = payload.visitor || {};
-  const messages = (payload.chat && payload.chat.messages) || payload.messages || [];
-  const firstVisitorMsg = messages.find(
-    (m) => (m.sender && (m.sender.t === 'v' || m.sender.type === 'visitor')) || m.type === 'msg'
+  const visitor = payload.visitor || payload.property?.visitor || {};
+  const messages =
+    (payload.chat && payload.chat.messages) ||
+    payload.messages ||
+    payload.transcript ||
+    [];
+
+  console.log(
+    '[bridge] visitor keys=',
+    Object.keys(visitor).join(','),
+    ' messages count=',
+    Array.isArray(messages) ? messages.length : 'not-array'
   );
-  const firstMsgText = firstVisitorMsg ? firstVisitorMsg.msg || firstVisitorMsg.text || '' : '';
+
+  // Try to find any visitor-authored message that looks like the form dump.
+  let firstMsgText = '';
+  if (Array.isArray(messages)) {
+    for (const m of messages) {
+      const text = m.msg || m.text || m.message || '';
+      if (typeof text === 'string' && text.indexOf(':') >= 0) {
+        firstMsgText = text;
+        break;
+      }
+    }
+  }
 
   const parsed = parseFormText(firstMsgText);
 
-  const email = parsed.email || visitor.email || visitor.e || '';
+  const email = parsed.email || visitor.email || visitor.e || payload.email || '';
   if (!email) {
-    return res.status(200).json({ skipped: true, reason: 'no email' });
+    console.log('[bridge] no email found, skipping. firstMsg sample=', firstMsgText.slice(0, 200));
+    return res.status(200).json({ skipped: true, reason: 'no email', event });
   }
 
   const fullName = parsed.name || visitor.name || visitor.n || '';
