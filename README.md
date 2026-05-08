@@ -1,6 +1,6 @@
 # tawk-hubspot-bridge
 
-Vercel serverless endpoint that receives a Tawk.to `chat:end` webhook, parses the pre-chat form embedded in the visitor's first message, and submits it to HubSpot via the Forms API.
+Cloudflare Worker that receives a Tawk.to `chat:end` webhook, parses the pre-chat form embedded in the visitor's first message, and submits it to HubSpot via the Forms API.
 
 ## Why
 
@@ -8,11 +8,25 @@ The native Tawk Zapier integration only exposes Name, Email, City, Country on th
 
 ## Endpoint
 
-`POST /api/webhook`
+`POST /` on the deployed Worker URL.
 
-## Environment variables
+## Deploy
 
-Set in Vercel (Settings → Environment Variables):
+```bash
+npm install
+npx wrangler login        # one-time, opens browser
+npx wrangler deploy
+```
+
+After the first deploy, set the secrets:
+
+```bash
+npx wrangler secret put HUBSPOT_PORTAL_ID
+npx wrangler secret put HUBSPOT_FORM_GUID
+npx wrangler secret put TAWK_WEBHOOK_SECRET   # optional
+```
+
+## Environment variables (set as Cloudflare secrets)
 
 | Name | Required | Notes |
 | --- | --- | --- |
