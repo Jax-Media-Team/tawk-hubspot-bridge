@@ -92,14 +92,20 @@ export default async function handler(req, res) {
   const fullName = parsed.name || visitor.name || visitor.n || '';
   const { firstname, lastname } = splitName(fullName);
 
+  // HubSpot 'message' is a standard property; combine services + comments here so
+  // sales reps see both without us needing a custom property.
+  const messageParts = [];
+  if (parsed.services) messageParts.push(`Services interested in: ${parsed.services}`);
+  if (parsed.comments) messageParts.push(`Comments: ${parsed.comments}`);
+  const message = messageParts.join('\n\n');
+
   const fields = [
     { name: 'email', value: email },
     { name: 'firstname', value: firstname },
     { name: 'lastname', value: lastname },
     { name: 'phone', value: parsed.phone },
     { name: 'website', value: parsed.website },
-    { name: 'services_interested_in', value: parsed.services },
-    { name: 'message', value: parsed.comments },
+    { name: 'message', value: message },
   ].filter((f) => f.value);
 
   const hsUrl = `https://api.hsforms.com/submissions/v3/integration/submit/${HUBSPOT_PORTAL_ID}/${HUBSPOT_FORM_GUID}`;
