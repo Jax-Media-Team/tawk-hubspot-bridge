@@ -109,7 +109,7 @@ Schema-validation only (no HubSpot calls, no live conversion): add `"validateOnl
 | Name | Required | Notes |
 | --- | --- | --- |
 | `DOWNSTREAM_SECRET` | yes | Caller secret; sent in `x-downstream-secret` header. Server-side only. |
-| `HUBSPOT_PRIVATE_APP_TOKEN` | yes | HubSpot private app; scopes `crm.objects.contacts.read`, `crm.objects.notes.read`, `crm.objects.notes.write` |
+| `HUBSPOT_PRIVATE_APP_TOKEN` | yes | HubSpot private app; scopes `crm.objects.contacts.read`, `crm.objects.contacts.write` (HubSpot Notes API is governed by contact scopes) |
 | `OPENAI_ADS_API_KEY` | reused | Bearer for the Conversions API |
 | `OPENAI_VALIDATE_ONLY` | reused | `'true'` forces validate_only for ALL sends (safety kill-switch) |
 
