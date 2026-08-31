@@ -82,3 +82,41 @@ In JotForm: form **210317504801039** → Settings → Integrations → Webhooks 
 2. Submit one test lead with an `oppref`; check logs for `payload(redacted)` and a `200` from OpenAI.
 3. Set `OPENAI_VALIDATE_ONLY=false`; submit one real test; confirm it appears in OpenAI's Event Stream and identifier coverage rises.
 4. Monitor real leads before changing any browser-side pixel behavior. The base OpenAI pixel stays in place regardless.
+
+---
+
+# Downstream funnel events (manual, authenticated)
+
+Additive endpoint that records DOWNSTREAM OpenAI Ads conversions for a known lead:
+`appointment_scheduled` (standard), `qualified_lead`, `proposal_sent`, `client_won` (custom).
+Isolated from the `lead_created` handler — shares no code with `api/openai-conversions.js`.
+
+## Endpoint
+
+`POST /api/downstream`  — server-to-server only. Header: `x-downstream-secret: <DOWNSTREAM_SECRET>`
+
+Body (JSON):
+```
+{ "contactId": "<HubSpot contact id>", "event": "qualified_lead",
+  "eventTimeIso": "2026-08-27T18:00:00-04:00", "humanConfirmed": true,
+  "amountCents": 480000, "currency": "USD",          // proposal_sent / client_won only
+  "actionSource": "offline", "authorizedUser": "pcruz", "note": "optional" }
+```
+Schema-validation only (no HubSpot calls, no live conversion): add `"validateOnly": true` (and optional `"testOppref"`).
+
+## Environment variables (in addition to the lead_created vars)
+
+| Name | Required | Notes |
+| --- | --- | --- |
+| `DOWNSTREAM_SECRET` | yes | Caller secret; sent in `x-downstream-secret` header. Server-side only. |
+| `HUBSPOT_PRIVATE_APP_TOKEN` | yes | HubSpot private app; scopes `crm.objects.contacts.read`, `crm.objects.contacts.write` (HubSpot Notes API is governed by contact scopes) |
+| `OPENAI_ADS_API_KEY` | reused | Bearer for the Conversions API |
+| `OPENAI_VALIDATE_ONLY` | reused | `'true'` forces validate_only for ALL sends (safety kill-switch) |
+
+## Guarantees
+
+- oppref parsed from the contact's `landing_page_url` and passed unchanged; refuses if no oppref / not `utm_source=openai`.
+- `qualified_lead` refused unless HubSpot Lead Status = Qualified (human-set).
+- Timestamp must be within OpenAI's window (last 7 days, <=10 min future); older events refused (no backfill).
+- Deterministic event id `hs_<contactId>_<event>` → at most one conversion per contact per stage; retries reuse id+timestamp.
+- Idempotency + audit via HubSpot Notes (no custom-property quota used); duplicate sends suppressed.
