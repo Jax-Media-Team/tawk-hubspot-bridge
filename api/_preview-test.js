@@ -10,6 +10,9 @@
 
 import downstream from './downstream.js';
 
+// The runner makes many sequential HubSpot + OpenAI(validate_only) calls; allow more time.
+export const maxDuration = 60;
+
 const HUBSPOT_BASE = 'https://api.hubapi.com';
 
 function mockRes() {
