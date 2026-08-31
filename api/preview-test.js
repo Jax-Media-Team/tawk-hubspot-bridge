@@ -51,6 +51,10 @@ export default async function handler(req, res) {
   const secret = process.env.DOWNSTREAM_SECRET;
   const nowIso = new Date().toISOString();
 
+  // ---------- Env sanity (no secret values exposed) ----------
+  const _t = process.env.HUBSPOT_PRIVATE_APP_TOKEN || '';
+  rec('hubspot_token_format_ok', /^pat-/.test(_t) && !/[^\x00-\x7F]/.test(_t), { starts_with_pat: /^pat-/.test(_t), has_nonascii: /[^\x00-\x7F]/.test(_t), length: _t.length });
+
   // ---------- Authentication ----------
   let r = await invoke({ event: 'qualified_lead', validateOnly: true }, undefined);
   rec('auth_missing_secret_rejected', r.status === 401, { status: r.status });
