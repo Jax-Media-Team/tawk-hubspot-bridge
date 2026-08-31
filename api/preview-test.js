@@ -44,11 +44,12 @@ const TEST_LANDING = 'https://jaxmediateam.com/jacksonville-digital-marketing-ag
 export default async function handler(req, res) {
   if (process.env.VERCEL_ENV !== 'preview') return res.status(404).json({ error: 'not_found' });
 
+  const results = [];
+  const rec = (name, pass, detail) => results.push({ name, pass, detail: detail || {} });
+  try {
   const contactId = (() => { try { return new URL(req.url, 'http://x').searchParams.get('contact'); } catch { return null; } })();
   const secret = process.env.DOWNSTREAM_SECRET;
   const nowIso = new Date().toISOString();
-  const results = [];
-  const rec = (name, pass, detail) => results.push({ name, pass, detail: detail || {} });
 
   // ---------- Authentication ----------
   let r = await invoke({ event: 'qualified_lead', validateOnly: true }, undefined);
@@ -142,4 +143,7 @@ export default async function handler(req, res) {
     contact_tested: !!contactId,
   };
   return res.status(200).json({ summary, results });
+  } catch (e) {
+    return res.status(200).json({ crashed: true, error: String((e && e.message) || e).slice(0, 400), stack: String((e && e.stack) || '').slice(0, 1200), results_so_far: results });
+  }
 }
